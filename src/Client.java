@@ -3,39 +3,45 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Random;
+
 /**
  * Created by Janaka on 2017-10-23.
  */
 public class Client {
 
-    private Node bs;
-    private String ip;
+    private Node bs;    // bootstrap server
+    private String ip;  // this node's IP
     private int port_receive;
     private int port_send;
     private String username;
     private boolean running;
     private Node[] knownNodes;
+    private ArrayList<String> files; // files in the node
 
     private Client(String[] args){
          String bs_ip = args[0];
          int bs_port = Integer.valueOf(args[1]);
-         this.bs = new Node(bs_ip,bs_port);
-         ip = args[2];
-         port_receive = Integer.valueOf(args[3]);
-         port_send = Integer.valueOf(args[4]);
-         username = args[5];
+         this.bs = new Node(bs_ip, bs_port);
+         this.ip = args[2];
+         this.port_receive = Integer.valueOf(args[3]);
+         this.port_send = Integer.valueOf(args[4]);
+         this.username = args[5];
     }
 
     public void start(){
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
         try {
-
             echo("BS=>" + bs.ip + ":" + bs.port);
             echo("My IP=>" + ip + ":" + port_receive);
             echo("Send Port=>" + ip + ":" + port_send);
 
-            // Register
-            String join_msg = "REG " + ip + " " + port_receive + " " + username;
-            String reply = send(join_msg, bs);
+            // Register with BS
+            String reg_msg = "REG " + ip + " " + port_receive + " " + username;
+            String reply = send(reg_msg, bs);
             knownNodes = parseRegMessage(reply);
 
             if(knownNodes!=null) {
@@ -44,12 +50,62 @@ public class Client {
                 }
             }
 
+            // Initiate files
+            fileReader = new FileReader("FileNames.txt");
+            bufferedReader = new BufferedReader(fileReader);
+            ArrayList<String> allFiles = new ArrayList<String>();
+
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                allFiles.add(line);
+            }
+
+            Random r = new Random();
+            int filesLow = 3;
+            int filesHigh = 5;
+            int noOfFilesInNode = r.nextInt(filesHigh - filesLow) + filesLow;
+            files = new ArrayList<>();
+
+            int noOfAllFiles = allFiles.size();
+            for (int i = 0; i < noOfFilesInNode; i++){
+                int random = r.nextInt(noOfAllFiles);
+                files.add(allFiles.get(random));
+                allFiles.remove(random);
+                noOfAllFiles--;
+            }
+
+            System.out.println("Files in the Node:");
+            for (String s : files) {
+                echo(s);
+            }
+
+            // Join to the distributed network
+
+
+            // Listen to the new joining nodes
+
+
+            // Leave the distributed network
+
+
+            // Unregister with BS
             String leave_msg = "UNREG " + ip + " " + port_receive + " " + username;
-            send(leave_msg, bs);
+//            send(leave_msg, bs);
 
 
         } catch (IOException e) {
             System.err.println("IOException " + e);
+        } finally {
+            try {
+                if (fileReader != null) {
+                    fileReader.close();
+                }
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -111,10 +167,10 @@ public class Client {
     private static Node[] parseRegMessage(String msg){
         String[] parts = msg.split(" ");
         Node[] nodes = null;
-        if(parts.length>3){
-            nodes = new Node[(parts.length-3)/2];
-            for(int i=3; i<parts.length; i+=2){
-                nodes[(i-3)/2] = new Node(parts[i], Integer.valueOf(parts[i+1]));
+        if(parts.length > 3){
+            nodes = new Node[(parts.length - 3)/2];
+            for(int i = 3; i < parts.length; i += 2){
+                nodes[(i - 3)/2] = new Node(parts[i], Integer.valueOf(parts[i + 1]));
             }
         }
 
