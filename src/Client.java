@@ -42,8 +42,8 @@ public class Client {
 
             // Register with BS
             String reg_msg = "REG " + ip + " " + port_receive + " " + username;
-            String reply = send(reg_msg, bs);
-            knownNodes = parseRegMessage(reply);
+            String reg_reply = send(reg_msg, bs);
+            knownNodes = parseRegMessage(reg_reply);
 
             if(knownNodes!=null) {
                 for (Node node : knownNodes) {
@@ -54,13 +54,17 @@ public class Client {
             // Listen to the new joining nodes
             while (running){
                 // thread
+                running = false;
             }
 
             // Initiate files
             initiateFiles();
 
             // Join to the distributed network
-
+            for (Node node : knownNodes){
+                String join_msg = "JOIN " + ip + " " + port_receive;
+                String join_reply = send(join_msg, node);
+            }
 
             // Leave the distributed network
 
