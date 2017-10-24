@@ -35,6 +35,7 @@ public class Client {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
         try {
+            running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
             echo("My IP=>" + ip + ":" + port_receive);
             echo("Send Port=>" + ip + ":" + port_send);
@@ -50,7 +51,36 @@ public class Client {
                 }
             }
 
+            // Listen to the new joining nodes
+            while (running){
+                // thread
+            }
+
             // Initiate files
+            initiateFiles();
+
+            // Join to the distributed network
+
+
+            // Leave the distributed network
+
+
+            // Unregister with BS
+            String leave_msg = "UNREG " + ip + " " + port_receive + " " + username;
+//            send(leave_msg, bs);
+
+
+        } catch (IOException e) {
+            System.err.println("IOException " + e);
+        } finally {
+            if (running == true) { running = false; }
+        }
+    }
+
+    private void initiateFiles(){
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
+        try {
             fileReader = new FileReader("FileNames.txt");
             bufferedReader = new BufferedReader(fileReader);
             ArrayList<String> allFiles = new ArrayList<String>();
@@ -78,23 +108,8 @@ public class Client {
             for (String s : files) {
                 echo(s);
             }
-
-            // Join to the distributed network
-
-
-            // Listen to the new joining nodes
-
-
-            // Leave the distributed network
-
-
-            // Unregister with BS
-            String leave_msg = "UNREG " + ip + " " + port_receive + " " + username;
-//            send(leave_msg, bs);
-
-
         } catch (IOException e) {
-            System.err.println("IOException " + e);
+            e.printStackTrace();
         } finally {
             try {
                 if (fileReader != null) {
