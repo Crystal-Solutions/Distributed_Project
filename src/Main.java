@@ -13,14 +13,14 @@ public class Main {
     public static void main(String[] args) {
         if (args.length != 6)
             return;
+        Client client = Client.fromArgs(args);
 
         String[] files = getFiles("FileNames.txt");
-
-        for(String f :files)
-            echo(f);
-
-        Client client = Client.fromArgs(args);
         client.setFiles(files);
+
+        String[] queries = getQueries("Queries.txt");
+        client.setQueries(queries);
+
 
         client.start();
 
@@ -75,5 +75,33 @@ public class Main {
         }
     }
 
+    private static String[] getQueries(String fileName){
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
+        ArrayList<String> allQueries = new ArrayList<>();
+        try {
+            fileReader = new FileReader(fileName);
+            bufferedReader = new BufferedReader(fileReader);
+            allQueries = new ArrayList<String>();
 
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                allQueries.add(line);
+            }
+            echo("Queries in the Node:");
+            allQueries.forEach(Main::echo);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (fileReader != null)
+                    fileReader.close();
+                if (bufferedReader != null)
+                    bufferedReader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return  allQueries.toArray(new String[allQueries.size()]);
+        }
+    }
 }
