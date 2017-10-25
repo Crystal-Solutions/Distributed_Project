@@ -36,9 +36,6 @@ public class Client {
 
     public void start(){
         try {
-            // Initiate files
-            initiateFiles();
-
             search("of Tintin Jack");
 
             running = true;
@@ -224,55 +221,6 @@ public class Client {
         }
     }
 
-    private void initiateFiles(){
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-        try {
-            fileReader = new FileReader("FileNames.txt");
-            bufferedReader = new BufferedReader(fileReader);
-            ArrayList<String> allFiles = new ArrayList<String>();
-
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                allFiles.add(line);
-            }
-
-            Random r = new Random();
-            int filesLow = 3;
-            int filesHigh = 5;
-            int noOfFilesInNode = r.nextInt(filesHigh - filesLow) + filesLow;
-            ArrayList<String> files = new ArrayList<>();
-
-            int noOfAllFiles = allFiles.size();
-            for (int i = 0; i < noOfFilesInNode; i++){
-                int random = r.nextInt(noOfAllFiles);
-                files.add(allFiles.get(random));
-                allFiles.remove(random);
-                noOfAllFiles--;
-            }
-
-            this.files = files.toArray(new String[files.size()]);
-
-            System.out.println("Files in the Node:");
-            for (String s : files) {
-                echo(s);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (fileReader != null) {
-                    fileReader.close();
-                }
-                if (bufferedReader != null) {
-                    bufferedReader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private String sendAndRecieve(String msg, Node node) throws IOException {
         msg = addLengthToMsg(msg);
         echo("Send and recieve(" + node.ip + ":" + node.port + ")>>" + msg);
@@ -305,6 +253,10 @@ public class Client {
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
         sock.send(packet);
         sock.close();
+    }
+
+    public void setFiles(String[] files) {
+        this.files = files;
     }
 
     private List<String> search(String msg) {
