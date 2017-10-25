@@ -309,7 +309,7 @@ public class Client {
 
     private List<String> search(String msg) {
 
-        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2"};
+        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2", "Jack and Jill 2"};
         List<String> filesFound = new ArrayList<String>();
         StringTokenizer st = new StringTokenizer(msg, " ");
 
