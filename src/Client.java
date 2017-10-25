@@ -36,7 +36,7 @@ public class Client {
 
     public void start(){
         try {
-            search("of Tintin Jack");
+            //search("of Tintin Jack");
 
             running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
@@ -95,7 +95,7 @@ public class Client {
                                 }
 
                                 if (isOkay){
-                                    joinee = new Node(ip, port);
+                                        joinee = new Node(ip, port);
                                     knownNodes.add(joinee);
                                     reply += "0";
                                     // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
@@ -267,7 +267,7 @@ public class Client {
 
         while (st.hasMoreTokens()) {
             String value = st.nextToken();
-            for (String s: queries){
+            for (String s: files){
                 if (s.contains(value)){
                     filesFound.add(s);
                 }
@@ -327,6 +327,8 @@ public class Client {
         }
         return msg;
     }
+
+    //private static ArrayList<Node> parseRegMessage(String msg){
 
     private static ArrayList<Node> parseRegMessage(String msg){
         String[] parts = msg.split(" ");
