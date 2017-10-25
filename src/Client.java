@@ -155,13 +155,14 @@ public class Client {
                                     send(reply,sender);
                                 }
 
-                                int newHops = hops+1;
+                                hops++;
+                                if(hops <= 235){
+                                    for (Node node : knownNodes) {
+                                        String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
+                                        //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                                        send(search_msg, node);
 
-                                for (Node node : knownNodes) {
-                                    String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchQuery + "\"" + " " + newHops;
-                                    //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
-                                    send(search_msg, node);
-                                    if(newHops > hops+ 5){break;}
+                                    }
                                 }
                             }
                             //------------------
@@ -187,9 +188,9 @@ public class Client {
             // TODO: pani - take queries from file and search(can use a seperate method
 
             for (Node node : knownNodes) {
-                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"" + " " + "234";
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"" + " " + "234";
                 //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
-                send(search_msg, node);
+                //send(search_msg, node);
             }
 
             //String search_reply = sendAndRecieve(search_msg, node);
