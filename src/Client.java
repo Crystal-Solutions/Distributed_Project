@@ -4,8 +4,10 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 
 import java.io.*;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.StringTokenizer;
 
 /**
  * Created by Janaka on 2017-10-23.
@@ -17,23 +19,24 @@ public class Client {
     private int port_receive;
     private int port_send;
     private String username;
-    private boolean running;
-    private Node[] knownNodes;
+    private volatile boolean running;
+    private ArrayList<Node> knownNodes;
     private ArrayList<String> files; // files in the node
 
+    private DatagramSocket rec_socket = null;
+
     private Client(String[] args){
-         String bs_ip = args[0];
-         int bs_port = Integer.valueOf(args[1]);
-         this.bs = new Node(bs_ip, bs_port);
-         this.ip = args[2];
-         this.port_receive = Integer.valueOf(args[3]);
-         this.port_send = Integer.valueOf(args[4]);
-         this.username = args[5];
+        String bs_ip = args[0];
+        int bs_port = Integer.valueOf(args[1]);
+        this.bs = new Node(bs_ip, bs_port);
+        this.ip = args[2];
+        this.port_receive = Integer.valueOf(args[3]);
+        this.port_send = Integer.valueOf(args[4]);
+        this.username = args[5];
+
     }
 
     public void start(){
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
         try {
             running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
@@ -42,7 +45,7 @@ public class Client {
 
             // Register with BS
             String reg_msg = "REG " + ip + " " + port_receive + " " + username;
-            String reg_reply = send(reg_msg, bs);
+            String reg_reply = sendAndRecieve(reg_msg, bs);
             knownNodes = parseRegMessage(reg_reply);
 
             if(knownNodes!=null) {
@@ -52,27 +55,99 @@ public class Client {
             }
 
             // Listen to the new joining nodes
-            while (running){
-                // thread
-                running = false;
-            }
+            rec_socket = new DatagramSocket(port_receive);
+            rec_socket.setSoTimeout(1000);
+            echo("Client listening at " + ip + ":" + port_receive);
+
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (running){
+                        byte[] buffer = new byte[65536];
+                        DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+                        try {
+                            boolean isOkay = true;
+                            rec_socket.receive(incoming);
+
+                            byte[] data = incoming.getData();
+                            String s = new String(data, 0, incoming.getLength());
+
+                            //echo the details of incoming data - client ip : client port - client message
+                            echo(incoming.getAddress().getHostAddress() + " : " + incoming.getPort() + " - " + s);
+
+                            StringTokenizer st = new StringTokenizer(s, " ");
+
+                            String length = st.nextToken();
+                            String command = st.nextToken();
+
+                            if (command.equals("JOIN")) {
+                                String reply = "JOINOK ";
+                                Node joinee = null;
+
+                                String ip = st.nextToken();
+                                int port = Integer.parseInt(st.nextToken());
+
+                                for (int i = 0; i < knownNodes.size(); i++) {
+                                    if (knownNodes.get(i).getIp().equals(ip) && knownNodes.get(i).getPort() == port) {
+                                        reply += "9999";
+                                        isOkay = false;
+                                    }
+                                }
+                                if (isOkay){
+                                    joinee = new Node(ip, port);
+                                    knownNodes.add(joinee);
+                                    reply += "0";
+                                    // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
+                                    send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+                                }
+                            }
+                        } catch (SocketTimeoutException e) {
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    rec_socket.close();
+                }
+            });
+            t.start();
 
             // Initiate files
             initiateFiles();
 
             // Join to the distributed network
-            for (Node node : knownNodes){
+            for (Node node : knownNodes) {
                 String join_msg = "JOIN " + ip + " " + port_receive;
-                String join_reply = send(join_msg, node);
+                String join_reply = sendAndRecieve(join_msg, node);
             }
 
-            // Leave the distributed network
+            // TODO: pani - take queries from file and search(can use a seperate method
 
+            BufferedReader bufferedReader = null;
+            while (running) {
+                bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+                String s = bufferedReader.readLine();
+                // TODO: pani/ravi - take queries from user input and search(can use a seperate method
+                if (s.equals("leave")){
+                    running = !running;
+                } else if (s.equals("nodes")) {
+                    // for debugging purposes
+                    if(knownNodes!=null) {
+                        for (Node node : knownNodes) {
+                            echo(node.ip + ":" + node.port);
+                        }
+                    }
+                    continue;
+                }
 
-            // Unregister with BS
-            String leave_msg = "UNREG " + ip + " " + port_receive + " " + username;
-//            send(leave_msg, bs);
+                // TODO: ravi - leave network
+                // Leave the distributed network
 
+                // Unregister with BS
+                String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
+                sendAndRecieve(unreg_msg, bs);
+            }
+            bufferedReader.close();
 
         } catch (IOException e) {
             System.err.println("IOException " + e);
@@ -128,13 +203,14 @@ public class Client {
         }
     }
 
-    private String send(String msg, Node node) throws IOException {
+    private String sendAndRecieve(String msg, Node node) throws IOException {
         msg = addLengthToMsg(msg);
-        echo("Send(" + ip + ":" + node.port + ")>>" + msg);
+        echo("Send and recieve(" + node.ip + ":" + node.port + ")>>" + msg);
         DatagramSocket sock = new DatagramSocket(port_send);
-        InetAddress bs_address = InetAddress.getByName(node.ip);
+        // node address - node to recieve the msg
+        InetAddress node_address = InetAddress.getByName(node.ip);
         byte[] buffer = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, bs_address, node.port);
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
         sock.send(packet);
 
         buffer = new byte[65536];
@@ -149,6 +225,18 @@ public class Client {
         return s;
     }
 
+    private void send(String msg, Node node) throws IOException {
+        msg = addLengthToMsg(msg);
+        echo("Send(" + ip + ":" + node.port + ")>>" + msg);
+        DatagramSocket sock = new DatagramSocket(port_send);
+        // node address - node to recieve the msg
+        InetAddress node_address = InetAddress.getByName(node.ip);
+        byte[] buffer = msg.getBytes();
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+        sock.send(packet);
+        sock.close();
+    }
+
     private static class Node{
         String ip;
         int port;
@@ -156,6 +244,14 @@ public class Client {
         public Node(String ip, int port){
             this.ip = ip;
             this.port = port;
+        }
+
+        public String getIp(){
+            return this.ip;
+        }
+
+        public int getPort(){
+            return this.port;
         }
     }
 
@@ -183,16 +279,16 @@ public class Client {
         return msg;
     }
 
-    private static Node[] parseRegMessage(String msg){
+    private static ArrayList<Node> parseRegMessage(String msg){
         String[] parts = msg.split(" ");
-        Node[] nodes = null;
+        ArrayList<Node> nodes = new ArrayList<>();
         if(parts.length > 3){
-            nodes = new Node[(parts.length - 3)/2];
+            //nodes = new Node[(parts.length - 3)/2];
             for(int i = 3; i < parts.length; i += 2){
-                nodes[(i - 3)/2] = new Node(parts[i], Integer.valueOf(parts[i + 1]));
+                //nodes[(i - 3)/2] = new Node(parts[i], Integer.valueOf(parts[i + 1]));
+                nodes.add(new Node(parts[i], Integer.valueOf(parts[i + 1])));
             }
         }
-
         return nodes;
     }
 
