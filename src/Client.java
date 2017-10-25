@@ -156,7 +156,7 @@ public class Client {
                                 }
 
                                 hops++;
-                                if(hops <= 235){
+                                if(hops <= 245){
                                     for (Node node : knownNodes) {
                                         String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
                                         //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
@@ -229,7 +229,7 @@ public class Client {
 
                 // Unregister with BS
                 String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
-                sendAndRecieve(unreg_msg, bs);
+                send(unreg_msg, bs);
             }
             bufferedReader.close();
 
@@ -263,15 +263,18 @@ public class Client {
     }
 
     private void send(String msg, Node node) throws IOException {
-        msg = addLengthToMsg(msg);
-        echo("Send(" + ip + ":" + node.port + ")>>" + msg);
-        DatagramSocket sock = new DatagramSocket(port_send);
-        // node address - node to recieve the msg
-        InetAddress node_address = InetAddress.getByName(node.ip);
-        byte[] buffer = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
-        sock.send(packet);
-        sock.close();
+        synchronized (this)
+        {
+            msg = addLengthToMsg(msg);
+            echo("Send(" + ip + ":" + node.port + ")>>" + msg);
+            DatagramSocket sock = new DatagramSocket(port_send);
+            // node address - node to recieve the msg
+            InetAddress node_address = InetAddress.getByName(node.ip);
+            byte[] buffer = msg.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+            sock.send(packet);
+            sock.close();
+        }
     }
 
     public void setFiles(String[] files) {
