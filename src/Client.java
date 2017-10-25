@@ -96,7 +96,7 @@ public class Client {
                                 }
 
                                 if (isOkay){
-                                        joinee = new Node(ip, port);
+                                    joinee = new Node(ip, port);
                                     knownNodes.add(joinee);
                                     reply += "0";
                                     // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
@@ -106,65 +106,9 @@ public class Client {
 
                             //----------------------------------
                             if (command.equals("SER")) {
-                                String reply = "SEROK ";
-                                Node sender = null;
-
-                                String ip = st.nextToken();
-                                int port = Integer.parseInt(st.nextToken());
-
-
-                                String query = "";
-
-                                while(st.hasMoreTokens()){
-                                    String value = st.nextToken();
-                                    Character lastChar = value.charAt(value.length()-1);
-                                    if (lastChar.equals('\"')){
-                                        value = value.substring(0, value.length() - 1);
-                                        query = query + value;
-                                        break;
-                                    }
-                                    else{
-                                        query = query + value + " ";
-                                    }
-                                }
-
-                                int hops = Integer.parseInt(st.nextToken());
-
-                                String searchQuery = query.substring(1,query.length());
-                                echo("File searched: " + searchQuery);
-                                echo("hops: " + hops);
-
-                                List<String> results = search(searchQuery);
-
-                                if (results.isEmpty()){
-                                    reply += "0";
-                                    isOkay = true;
-                                }
-
-                                else{
-                                    reply += results.size() + " ";
-                                    for (Object fileName: results){
-                                        reply += fileName.toString()+ " ";
-                                    }
-                                    isOkay = true;
-                                }
-
-                                if (isOkay){
-                                    echo(ip+" "+ port);
-                                    sender = new Node(ip, port);
-                                    send(reply,sender);
-                                }
-
-                                hops++;
-                                if(hops <= 235){
-                                    for (Node node : knownNodes) {
-                                        String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
-                                        //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
-                                        send(search_msg, node);
-
-                                    }
-                                }
+                                searchQuery(st,incoming);
                             }
+
                             //------------------
 
                             if (command.equals("LEAVE")) {
@@ -271,6 +215,7 @@ public class Client {
         byte[] buffer = msg.getBytes();
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
         sock.send(packet);
+
         sock.close();
     }
 
@@ -317,6 +262,69 @@ public class Client {
         send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
 
         knownNodes.removeIf(p->p.port== port && p.ip==ip);
+    }
+
+    private void searchQuery( StringTokenizer st,DatagramPacket incoming) throws IOException {
+
+        boolean isOkay = true;
+        String reply = "SEROK ";
+        Node sender = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+
+
+        String query = "";
+
+        while(st.hasMoreTokens()){
+            String value = st.nextToken();
+            Character lastChar = value.charAt(value.length()-1);
+            if (lastChar.equals('\"')){
+                value = value.substring(0, value.length() - 1);
+                query = query + value;
+                break;
+            }
+            else{
+                query = query + value + " ";
+            }
+        }
+
+        int hops = Integer.parseInt(st.nextToken());
+
+        String searchQuery = query.substring(1,query.length());
+        echo("File searched: " + searchQuery);
+        echo("hops: " + hops);
+
+        List<String> results = search(searchQuery);
+
+        if (results.isEmpty()){
+            reply += "0";
+            isOkay = true;
+        }
+
+        else{
+            reply += results.size() + " ";
+            for (Object fileName: results){
+                reply += fileName.toString()+ " ";
+            }
+            isOkay = true;
+        }
+
+        if (isOkay){
+            echo(ip+" "+ port);
+            sender = new Node(ip, port);
+            send(reply,sender);
+        }
+
+        hops++;
+        if(hops <= 235){
+            for (Node node : knownNodes) {
+                String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                send(search_msg, node);
+
+            }
+        }
     }
 
     private static class Node{
