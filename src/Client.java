@@ -155,6 +155,10 @@ public class Client {
                             }
                             //------------------
 
+                            if (command.equals("LEAVE")) {
+                                processLeave(st,incoming);
+                            }
+
                         } catch (SocketTimeoutException e) {
 
                         } catch (IOException e) {
@@ -207,6 +211,7 @@ public class Client {
 
                 // TODO: ravi - leave network
                 // Leave the distributed network
+
 
                 // Unregister with BS
                 String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
@@ -289,6 +294,16 @@ public class Client {
         this.queries = queries;
     }
 
+    private void processLeave( StringTokenizer st,DatagramPacket incoming) throws IOException {
+        String reply = "LEAVEOK ";
+        Node joinee = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+        send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+
+        knownNodes.removeIf(p->p.port== port && p.ip==ip);
+    }
 
     private static class Node{
         String ip;
