@@ -19,7 +19,7 @@ public class Client {
     private String username;
     private volatile boolean running;
     private ArrayList<Node> knownNodes;
-    private ArrayList<String> files; // files in the node
+    private String[] files; // files in the node
 
     private DatagramSocket rec_socket = null;
 
@@ -36,7 +36,11 @@ public class Client {
 
     public void start(){
         try {
+            // Initiate files
+            initiateFiles();
+
             search("of Tintin Jack");
+
             running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
             echo("My IP=>" + ip + ":" + port_receive);
@@ -164,9 +168,6 @@ public class Client {
             });
             t.start();
 
-            // Initiate files
-            initiateFiles();
-
             ArrayList<String> allQueries = getQueries();
 
             // Join to the distributed network
@@ -233,7 +234,7 @@ public class Client {
             int filesLow = 3;
             int filesHigh = 5;
             int noOfFilesInNode = r.nextInt(filesHigh - filesLow) + filesLow;
-            files = new ArrayList<>();
+            ArrayList<String> files = new ArrayList<>();
 
             int noOfAllFiles = allFiles.size();
             for (int i = 0; i < noOfFilesInNode; i++){
@@ -242,6 +243,8 @@ public class Client {
                 allFiles.remove(random);
                 noOfAllFiles--;
             }
+
+            this.files = files.toArray(new String[files.size()]);
 
             System.out.println("Files in the Node:");
             for (String s : files) {
