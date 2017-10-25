@@ -5,9 +5,7 @@ import java.net.InetAddress;
 
 import java.io.*;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.StringTokenizer;
+import java.util.*;
 
 /**
  * Created by Janaka on 2017-10-23.
@@ -38,6 +36,7 @@ public class Client {
 
     public void start(){
         try {
+            search("of Tintin Jack");
             running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
             echo("My IP=>" + ip + ":" + port_receive);
@@ -93,6 +92,7 @@ public class Client {
                                         isOkay = false;
                                     }
                                 }
+
                                 if (isOkay){
                                     joinee = new Node(ip, port);
                                     knownNodes.add(joinee);
@@ -101,6 +101,58 @@ public class Client {
                                     send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
                                 }
                             }
+
+                            //----------------------------------
+                            if (command.equals("SER")) {
+                                String reply = "SEROK ";
+                                Node joinee = null;
+
+                                String ip = st.nextToken();
+                                int port = Integer.parseInt(st.nextToken());
+
+                                String query = "";
+
+                                while(st.hasMoreTokens()){
+                                    String value = st.nextToken();
+                                    Character lastChar = value.charAt(value.length()-1);
+                                    if (lastChar.equals('\"')){
+                                        value = value.substring(0, value.length() - 1);
+                                        query = query + value;
+                                    }
+                                    else{
+                                        query = query + value + " ";
+                                    }
+
+                                }
+
+                                String searchQuery = query.substring(1,query.length());
+                                echo("File searched: " + searchQuery);
+
+                                List<String> results = search(searchQuery);
+
+                                if (results.isEmpty()){
+                                    reply += "0";
+                                    isOkay = true;
+                                }
+
+                                else{
+                                    reply += results.size() + " ";
+                                    for (Object fileName: results){
+                                        reply += fileName.toString()+ " ";
+                                    }
+                                    isOkay = true;
+                                }
+
+                                if (isOkay){
+                                    //joinee = new Node(ip, port);
+                                    //knownNodes.add(joinee);
+                                    //reply += "0";
+                                    // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
+                                    send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+                                }
+                            }
+                            //------------------
+
                         } catch (SocketTimeoutException e) {
 
                         } catch (IOException e) {
@@ -115,13 +167,21 @@ public class Client {
             // Initiate files
             initiateFiles();
 
+            ArrayList<String> allQueries = getQueries();
+
             // Join to the distributed network
             for (Node node : knownNodes) {
                 String join_msg = "JOIN " + ip + " " + port_receive;
                 String join_reply = sendAndRecieve(join_msg, node);
+
+                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                String search_reply = sendAndRecieve(search_msg, node);
             }
 
             // TODO: pani - take queries from file and search(can use a seperate method
+
+
+            //String search_reply = sendAndRecieve(search_msg, node);
 
             BufferedReader bufferedReader = null;
             while (running) {
@@ -292,4 +352,58 @@ public class Client {
         return nodes;
     }
 
+    private List<String> search(String msg) {
+
+        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2"};
+        List<String> filesFound = new ArrayList<String>();
+        StringTokenizer st = new StringTokenizer(msg, " ");
+
+        while (st.hasMoreTokens()) {
+            String value = st.nextToken();
+            for (String s: queries){
+                if (s.contains(value)){
+                    filesFound.add(s);
+                }
+            }
+        }
+
+        Set setOfFiles = new HashSet(filesFound);
+        List<String> fileNames = new ArrayList<String>();
+
+        for (Object i: setOfFiles){
+            String x = i.toString().replaceAll(" ","_");
+            fileNames.add(x);
+        }
+
+        return fileNames;
+    }
+
+    private ArrayList<String> getQueries(){
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
+        ArrayList<String> allQueries = new ArrayList<String>();
+        try {
+            fileReader = new FileReader("Queries.txt");
+            bufferedReader = new BufferedReader(fileReader);
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                allQueries.add(line);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (fileReader != null) {
+                    fileReader.close();
+                }
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return allQueries;
+    }
 }
