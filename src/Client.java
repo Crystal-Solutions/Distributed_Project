@@ -82,11 +82,11 @@ public class Client {
                             String command = st.nextToken();
 
                             if (command.equals("JOIN")) {
-                                joinNodes(st,incoming);
+                                processJoin(st,incoming);
                             }
 
                             if (command.equals("SER")) {
-                                searchQuery(st,incoming);
+                                processSearch(st,incoming);
                             }
 
                             if (command.equals("LEAVE")) {
@@ -140,19 +140,15 @@ public class Client {
                     String searchText = s;
                     for (Node node : knownNodes) {
                         String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" +" " + "234";
-                        //String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"";
                         send(search_msg, node);
                     }
                 }
-
-                // TODO: ravi - leave network
-                // Leave the distributed network
-
-
-                // Unregister with BS
-                String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
-                send(unreg_msg, bs);
             }
+            // TODO: ravi - leave network
+            // Leave the distributed network
+            // Unregister with BS
+            String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
+            send(unreg_msg, bs);
             bufferedReader.close();
 
         } catch (IOException e) {
@@ -246,7 +242,7 @@ public class Client {
         knownNodes.removeIf(p->p.port== port && p.ip==ip);
     }
 
-    private void searchQuery( StringTokenizer st,DatagramPacket incoming) throws IOException {
+    private void processSearch(StringTokenizer st, DatagramPacket incoming) throws IOException {
 
         boolean isOkay = true;
         String reply = "SEROK ";
@@ -307,7 +303,7 @@ public class Client {
         }
     }
 
-    private void joinNodes( StringTokenizer st,DatagramPacket incoming) throws IOException {
+    private void processJoin(StringTokenizer st, DatagramPacket incoming) throws IOException {
         boolean isOkay = true;
         String reply = "JOINOK ";
         Node joinee = null;
