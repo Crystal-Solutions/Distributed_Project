@@ -107,10 +107,11 @@ public class Client {
                             //----------------------------------
                             if (command.equals("SER")) {
                                 String reply = "SEROK ";
-                                Node joinee = null;
+                                Node sender = null;
 
                                 String ip = st.nextToken();
                                 int port = Integer.parseInt(st.nextToken());
+
 
                                 String query = "";
 
@@ -120,15 +121,18 @@ public class Client {
                                     if (lastChar.equals('\"')){
                                         value = value.substring(0, value.length() - 1);
                                         query = query + value;
+                                        break;
                                     }
                                     else{
                                         query = query + value + " ";
                                     }
-
                                 }
+
+                                int hops = Integer.parseInt(st.nextToken());
 
                                 String searchQuery = query.substring(1,query.length());
                                 echo("File searched: " + searchQuery);
+                                echo("hops: " + hops);
 
                                 List<String> results = search(searchQuery);
 
@@ -146,11 +150,18 @@ public class Client {
                                 }
 
                                 if (isOkay){
-                                    //joinee = new Node(ip, port);
-                                    //knownNodes.add(joinee);
-                                    //reply += "0";
-                                    // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
-                                    send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+                                    echo(ip+" "+ port);
+                                    sender = new Node(ip, port);
+                                    send(reply,sender);
+                                }
+
+                                int newHops = hops+1;
+
+                                for (Node node : knownNodes) {
+                                    String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchQuery + "\"" + " " + newHops;
+                                    //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                                    send(search_msg, node);
+                                    if(newHops > hops+ 5){break;}
                                 }
                             }
                             //------------------
@@ -176,8 +187,9 @@ public class Client {
             // TODO: pani - take queries from file and search(can use a seperate method
 
             for (Node node : knownNodes) {
-                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
-                String search_reply = sendAndRecieve(search_msg, node);
+                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"" + " " + "234";
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                send(search_msg, node);
             }
 
             //String search_reply = sendAndRecieve(search_msg, node);
@@ -200,8 +212,9 @@ public class Client {
                 }else {
                     String searchText = s;
                     for (Node node : knownNodes) {
-                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"";
-                        String search_reply = sendAndRecieve(search_msg, node);
+                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" +" " + "234";
+                        //String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"";
+                        send(search_msg, node);
                     }
                 }
 
@@ -331,8 +344,6 @@ public class Client {
         }
         return msg;
     }
-
-    //private static ArrayList<Node> parseRegMessage(String msg){
 
     private static ArrayList<Node> parseRegMessage(String msg){
         String[] parts = msg.split(" ");
