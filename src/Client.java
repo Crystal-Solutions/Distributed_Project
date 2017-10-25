@@ -82,34 +82,12 @@ public class Client {
                             String command = st.nextToken();
 
                             if (command.equals("JOIN")) {
-                                String reply = "JOINOK ";
-                                Node joinee = null;
-
-                                String ip = st.nextToken();
-                                int port = Integer.parseInt(st.nextToken());
-
-                                for (int i = 0; i < knownNodes.size(); i++) {
-                                    if (knownNodes.get(i).getIp().equals(ip) && knownNodes.get(i).getPort() == port) {
-                                        reply += "9999";
-                                        isOkay = false;
-                                    }
-                                }
-
-                                if (isOkay){
-                                    joinee = new Node(ip, port);
-                                    knownNodes.add(joinee);
-                                    reply += "0";
-                                    // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
-                                    send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
-                                }
+                                joinNodes(st,incoming);
                             }
 
-                            //----------------------------------
                             if (command.equals("SER")) {
                                 searchQuery(st,incoming);
                             }
-
-                            //------------------
 
                             if (command.equals("LEAVE")) {
                                 processLeave(st,incoming);
@@ -173,7 +151,7 @@ public class Client {
 
                 // Unregister with BS
                 String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
-                sendAndRecieve(unreg_msg, bs);
+                send(unreg_msg, bs);
             }
             bufferedReader.close();
 
@@ -207,16 +185,20 @@ public class Client {
     }
 
     private void send(String msg, Node node) throws IOException {
-        msg = addLengthToMsg(msg);
-        echo("Send(" + ip + ":" + node.port + ")>>" + msg);
-        DatagramSocket sock = new DatagramSocket(port_send);
-        // node address - node to recieve the msg
-        InetAddress node_address = InetAddress.getByName(node.ip);
-        byte[] buffer = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
-        sock.send(packet);
 
-        sock.close();
+        synchronized (this)
+        {
+            msg = addLengthToMsg(msg);
+            echo("Send(" + ip + ":" + node.port + ")>>" + msg);
+            DatagramSocket sock = new DatagramSocket(port_send);
+            // node address - node to recieve the msg
+            InetAddress node_address = InetAddress.getByName(node.ip);
+            byte[] buffer = msg.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+            sock.send(packet);
+            sock.close();
+        }
+
     }
 
     public void setFiles(String[] files) {
@@ -292,8 +274,6 @@ public class Client {
         int hops = Integer.parseInt(st.nextToken());
 
         String searchQuery = query.substring(1,query.length());
-        echo("File searched: " + searchQuery);
-        echo("hops: " + hops);
 
         List<String> results = search(searchQuery);
 
@@ -324,6 +304,30 @@ public class Client {
                 send(search_msg, node);
 
             }
+        }
+    }
+
+    private void joinNodes( StringTokenizer st,DatagramPacket incoming) throws IOException {
+        boolean isOkay = true;
+        String reply = "JOINOK ";
+        Node joinee = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+
+        for (int i = 0; i < knownNodes.size(); i++) {
+            if (knownNodes.get(i).getIp().equals(ip) && knownNodes.get(i).getPort() == port) {
+                reply += "9999";
+                isOkay = false;
+            }
+        }
+
+        if (isOkay){
+            joinee = new Node(ip, port);
+            knownNodes.add(joinee);
+            reply += "0";
+            // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
+            send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
         }
     }
 
