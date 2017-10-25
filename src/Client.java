@@ -173,13 +173,14 @@ public class Client {
             for (Node node : knownNodes) {
                 String join_msg = "JOIN " + ip + " " + port_receive;
                 String join_reply = sendAndRecieve(join_msg, node);
-
-                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
-                String search_reply = sendAndRecieve(search_msg, node);
             }
 
             // TODO: pani - take queries from file and search(can use a seperate method
 
+            for (Node node : knownNodes) {
+                String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                String search_reply = sendAndRecieve(search_msg, node);
+            }
 
             //String search_reply = sendAndRecieve(search_msg, node);
 
@@ -198,6 +199,12 @@ public class Client {
                         }
                     }
                     continue;
+                }else {
+                    String searchText = s;
+                    for (Node node : knownNodes) {
+                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"";
+                        String search_reply = sendAndRecieve(search_msg, node);
+                    }
                 }
 
                 // TODO: ravi - leave network
@@ -297,6 +304,33 @@ public class Client {
         sock.close();
     }
 
+    private List<String> search(String msg) {
+
+        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2"};
+        List<String> filesFound = new ArrayList<String>();
+        StringTokenizer st = new StringTokenizer(msg, " ");
+
+        while (st.hasMoreTokens()) {
+            String value = st.nextToken();
+            for (String s: queries){
+                if (s.contains(value)){
+                    filesFound.add(s);
+                }
+            }
+        }
+
+        Set setOfFiles = new HashSet(filesFound);
+        List<String> fileNames = new ArrayList<String>();
+
+        for (Object i: setOfFiles){
+            String x = i.toString().replaceAll(" ","_");
+            fileNames.add(x);
+        }
+
+        return fileNames;
+    }
+
+
     private static class Node{
         String ip;
         int port;
@@ -350,32 +384,6 @@ public class Client {
             }
         }
         return nodes;
-    }
-
-    private List<String> search(String msg) {
-
-        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2"};
-        List<String> filesFound = new ArrayList<String>();
-        StringTokenizer st = new StringTokenizer(msg, " ");
-
-        while (st.hasMoreTokens()) {
-            String value = st.nextToken();
-            for (String s: queries){
-                if (s.contains(value)){
-                    filesFound.add(s);
-                }
-            }
-        }
-
-        Set setOfFiles = new HashSet(filesFound);
-        List<String> fileNames = new ArrayList<String>();
-
-        for (Object i: setOfFiles){
-            String x = i.toString().replaceAll(" ","_");
-            fileNames.add(x);
-        }
-
-        return fileNames;
     }
 
     private ArrayList<String> getQueries(){
