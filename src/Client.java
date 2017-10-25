@@ -20,6 +20,7 @@ public class Client {
     private volatile boolean running;
     private ArrayList<Node> knownNodes;
     private String[] files; // files in the node
+    private String[] queries;
 
     private DatagramSocket rec_socket = null;
 
@@ -165,7 +166,6 @@ public class Client {
             });
             t.start();
 
-            ArrayList<String> allQueries = getQueries();
 
             // Join to the distributed network
             for (Node node : knownNodes) {
@@ -285,6 +285,10 @@ public class Client {
         return fileNames;
     }
 
+    public void setQueries(String[] queries) {
+        this.queries = queries;
+    }
+
 
     private static class Node{
         String ip;
@@ -343,32 +347,4 @@ public class Client {
         return nodes;
     }
 
-    private ArrayList<String> getQueries(){
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-        ArrayList<String> allQueries = new ArrayList<String>();
-        try {
-            fileReader = new FileReader("Queries.txt");
-            bufferedReader = new BufferedReader(fileReader);
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                allQueries.add(line);
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (fileReader != null) {
-                    fileReader.close();
-                }
-                if (bufferedReader != null) {
-                    bufferedReader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return allQueries;
-    }
 }
