@@ -5,9 +5,7 @@ import java.net.InetAddress;
 
 import java.io.*;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.StringTokenizer;
+import java.util.*;
 
 /**
  * Created by Janaka on 2017-10-23.
@@ -21,7 +19,8 @@ public class Client {
     private String username;
     private volatile boolean running;
     private ArrayList<Node> knownNodes;
-    private ArrayList<String> files; // files in the node
+    private String[] files; // files in the node
+    private String[] queries;
 
     private DatagramSocket rec_socket = null;
 
@@ -38,6 +37,8 @@ public class Client {
 
     public void start(){
         try {
+            //search("of Tintin Jack");
+
             running = true;
             echo("BS=>" + bs.ip + ":" + bs.port);
             echo("My IP=>" + ip + ":" + port_receive);
@@ -81,26 +82,17 @@ public class Client {
                             String command = st.nextToken();
 
                             if (command.equals("JOIN")) {
-                                String reply = "JOINOK ";
-                                Node joinee = null;
-
-                                String ip = st.nextToken();
-                                int port = Integer.parseInt(st.nextToken());
-
-                                for (int i = 0; i < knownNodes.size(); i++) {
-                                    if (knownNodes.get(i).getIp().equals(ip) && knownNodes.get(i).getPort() == port) {
-                                        reply += "9999";
-                                        isOkay = false;
-                                    }
-                                }
-                                if (isOkay){
-                                    joinee = new Node(ip, port);
-                                    knownNodes.add(joinee);
-                                    reply += "0";
-                                    // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
-                                    send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
-                                }
+                                processJoin(st,incoming);
                             }
+
+                            if (command.equals("SER")) {
+                                processSearch(st,incoming);
+                            }
+
+                            if (command.equals("LEAVE")) {
+                                processLeave(st,incoming);
+                            }
+
                         } catch (SocketTimeoutException e) {
 
                         } catch (IOException e) {
@@ -112,8 +104,6 @@ public class Client {
             });
             t.start();
 
-            // Initiate files
-            initiateFiles();
 
             // Join to the distributed network
             for (Node node : knownNodes) {
@@ -122,6 +112,14 @@ public class Client {
             }
 
             // TODO: pani - take queries from file and search(can use a seperate method
+
+            for (Node node : knownNodes) {
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"" + " " + "234";
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                //send(search_msg, node);
+            }
+
+            //String search_reply = sendAndRecieve(search_msg, node);
 
             BufferedReader bufferedReader = null;
             while (running) {
@@ -138,68 +136,25 @@ public class Client {
                         }
                     }
                     continue;
+                }else {
+                    String searchText = s;
+                    for (Node node : knownNodes) {
+                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" +" " + "234";
+                        send(search_msg, node);
+                    }
                 }
-
-                // TODO: ravi - leave network
-                // Leave the distributed network
-
-                // Unregister with BS
-                String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
-                sendAndRecieve(unreg_msg, bs);
             }
+            // TODO: ravi - leave network
+            // Leave the distributed network
+            // Unregister with BS
+            String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
+            send(unreg_msg, bs);
             bufferedReader.close();
 
         } catch (IOException e) {
             System.err.println("IOException " + e);
         } finally {
             if (running == true) { running = false; }
-        }
-    }
-
-    private void initiateFiles(){
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-        try {
-            fileReader = new FileReader("FileNames.txt");
-            bufferedReader = new BufferedReader(fileReader);
-            ArrayList<String> allFiles = new ArrayList<String>();
-
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                allFiles.add(line);
-            }
-
-            Random r = new Random();
-            int filesLow = 3;
-            int filesHigh = 5;
-            int noOfFilesInNode = r.nextInt(filesHigh - filesLow) + filesLow;
-            files = new ArrayList<>();
-
-            int noOfAllFiles = allFiles.size();
-            for (int i = 0; i < noOfFilesInNode; i++){
-                int random = r.nextInt(noOfAllFiles);
-                files.add(allFiles.get(random));
-                allFiles.remove(random);
-                noOfAllFiles--;
-            }
-
-            System.out.println("Files in the Node:");
-            for (String s : files) {
-                echo(s);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (fileReader != null) {
-                    fileReader.close();
-                }
-                if (bufferedReader != null) {
-                    bufferedReader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
 
@@ -226,15 +181,150 @@ public class Client {
     }
 
     private void send(String msg, Node node) throws IOException {
-        msg = addLengthToMsg(msg);
-        echo("Send(" + ip + ":" + node.port + ")>>" + msg);
-        DatagramSocket sock = new DatagramSocket(port_send);
-        // node address - node to recieve the msg
-        InetAddress node_address = InetAddress.getByName(node.ip);
-        byte[] buffer = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
-        sock.send(packet);
-        sock.close();
+
+        synchronized (this)
+        {
+            msg = addLengthToMsg(msg);
+            echo("Send(" + ip + ":" + node.port + ")>>" + msg);
+            DatagramSocket sock = new DatagramSocket(port_send);
+            // node address - node to recieve the msg
+            InetAddress node_address = InetAddress.getByName(node.ip);
+            byte[] buffer = msg.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+            sock.send(packet);
+            sock.close();
+        }
+
+    }
+
+    public void setFiles(String[] files) {
+        this.files = files;
+    }
+
+    private List<String> search(String msg) {
+
+        String[] queries = {"Adventures of Tintin","Jack and Jill","Mission Impossible","Modern Family","Adventures of Tintin 2", "Jack and Jill 2"};
+        List<String> filesFound = new ArrayList<String>();
+        StringTokenizer st = new StringTokenizer(msg, " ");
+
+        while (st.hasMoreTokens()) {
+            String value = st.nextToken();
+            for (String s: files){
+                if (s.contains(value)){
+                    filesFound.add(s);
+                }
+            }
+        }
+
+        Set setOfFiles = new HashSet(filesFound);
+        List<String> fileNames = new ArrayList<String>();
+
+        for (Object i: setOfFiles){
+            String x = i.toString().replaceAll(" ","_");
+            fileNames.add(x);
+        }
+
+        return fileNames;
+    }
+
+    public void setQueries(String[] queries) {
+        this.queries = queries;
+    }
+
+    private void processLeave( StringTokenizer st,DatagramPacket incoming) throws IOException {
+        String reply = "LEAVEOK ";
+        Node joinee = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+        send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+
+        knownNodes.removeIf(p->p.port== port && p.ip==ip);
+    }
+
+    private void processSearch(StringTokenizer st, DatagramPacket incoming) throws IOException {
+
+        boolean isOkay = true;
+        String reply = "SEROK ";
+        Node sender = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+
+
+        String query = "";
+
+        while(st.hasMoreTokens()){
+            String value = st.nextToken();
+            Character lastChar = value.charAt(value.length()-1);
+            if (lastChar.equals('\"')){
+                value = value.substring(0, value.length() - 1);
+                query = query + value;
+                break;
+            }
+            else{
+                query = query + value + " ";
+            }
+        }
+
+        int hops = Integer.parseInt(st.nextToken());
+
+        String searchQuery = query.substring(1,query.length());
+
+        List<String> results = search(searchQuery);
+
+        if (results.isEmpty()){
+            reply += "0";
+            isOkay = true;
+        }
+
+        else{
+            reply += results.size() + " ";
+            for (Object fileName: results){
+                reply += fileName.toString()+ " ";
+            }
+            isOkay = true;
+        }
+
+        if (isOkay){
+            echo(ip+" "+ port);
+            sender = new Node(ip, port);
+            send(reply,sender);
+        }
+
+        hops++;
+        if(hops <= 235){
+            for (Node node : knownNodes) {
+                String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
+                //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
+                send(search_msg, node);
+
+            }
+        }
+    }
+
+    private void processJoin(StringTokenizer st, DatagramPacket incoming) throws IOException {
+        boolean isOkay = true;
+        String reply = "JOINOK ";
+        Node joinee = null;
+
+        String ip = st.nextToken();
+        int port = Integer.parseInt(st.nextToken());
+
+        for (int i = 0; i < knownNodes.size(); i++) {
+            if (knownNodes.get(i).getIp().equals(ip) && knownNodes.get(i).getPort() == port) {
+                reply += "9999";
+                isOkay = false;
+            }
+        }
+
+        if (isOkay){
+            joinee = new Node(ip, port);
+            knownNodes.add(joinee);
+            reply += "0";
+            // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
+            send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+        }
     }
 
     private static class Node{
