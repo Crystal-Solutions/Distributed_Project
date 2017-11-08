@@ -1,28 +1,28 @@
+package com.distributed.app;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.*;
 import java.io.*;
-import java.util.*;
 import java.util.ArrayList;
 import java.util.Random;
+
 
 public class Main {
 
     public static void main(String[] args) {
         if (args.length != 6)
             return;
-        Client client = Client.fromArgs(args);
+        Client udpClient = UdpClient.fromArgs(args);
 
         String[] files = getFiles("FileNames.txt");
-        client.setFiles(files);
+        udpClient.setFiles(files);
 
         String[] queries = getQueries("Queries.txt");
-        client.setQueries(queries);
+        udpClient.setQueries(queries);
 
 
-        client.start();
+        udpClient.start();
 
     }
 
@@ -58,7 +58,7 @@ public class Main {
                 allFiles.remove(random);
                 noOfAllFiles--;
             }
-            echo("Files in the Node:");
+            echo("Files in the com.distributed.app.Node:");
             files.forEach(Main::echo);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -88,8 +88,7 @@ public class Main {
             while ((line = bufferedReader.readLine()) != null) {
                 allQueries.add(line);
             }
-            echo("Queries in the Node:");
-            allQueries.forEach(Main::echo);
+            echo("Queries in the com.distributed.app.Node:");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } finally {
