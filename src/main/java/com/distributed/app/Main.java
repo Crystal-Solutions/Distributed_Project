@@ -1,5 +1,6 @@
 package com.distributed.app;
 
+import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class Main {
             return;
         }
         Client client;
-        echo(args[6]);
+        String clientType = args[6];
         if(args[6].equals("REST")){
             echo("Start with Rest Client");
             client = RestClient.fromArgs(args);
@@ -35,6 +36,16 @@ public class Main {
         String[] queries = getQueries("Queries.txt");
         client.setQueries(queries);
 
+
+        JFrame frame =new JFrame("DisplayDialog");
+        frame.setTitle(clientType+" Client");
+        DisplayDialog dialog = new DisplayDialog();
+        dialog.clientType.setText(clientType);
+        dialog.logText.setText("jldkafj\nldlldd");
+        frame.setContentPane(dialog.getContentPane());
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.pack();
+        frame.setVisible(true);
 
         client.start();
 
