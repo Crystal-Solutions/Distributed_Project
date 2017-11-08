@@ -20,11 +20,7 @@ public class Node {
         return this.port;
     }
 
-    public void send(String msg){
-
-    }
-
-    public String sendAndReceive(String msg){
-        return "";
+    public String getHttpUrl(){
+        return "http://"+ip+":"+port;
     }
 }

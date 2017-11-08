@@ -11,18 +11,32 @@ import java.util.Random;
 public class Main {
 
     public static void main(String[] args) {
-        if (args.length != 6)
+
+        // Normal
+        if (args.length != 7)
+        {
+            echo("Invalid arguments");
             return;
-        Client udpClient = UdpClient.fromArgs(args);
+        }
+        Client client;
+        echo(args[6]);
+        if(args[6].equals("REST")){
+            echo("Start with Rest Client");
+            client = RestClient.fromArgs(args);
+        }
+        else{
+            echo("Start with UDP Client");
+            client = UdpClient.fromArgs(args);
+        }
 
         String[] files = getFiles("FileNames.txt");
-        udpClient.setFiles(files);
+        client.setFiles(files);
 
         String[] queries = getQueries("Queries.txt");
-        udpClient.setQueries(queries);
+        client.setQueries(queries);
 
 
-        udpClient.start();
+        client.start();
 
     }
 

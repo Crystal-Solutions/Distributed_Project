@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.*;
 
@@ -17,16 +19,18 @@ public abstract class Client {
     protected Node bs;    // bootstrap server
     protected String ip;  // this node's IP
     protected int port_receive;
+    protected int port_send;
     protected String[] files; // files in the node
     protected String[] queries;
     protected String username;
     protected volatile boolean running;
     protected ArrayList<Node> knownNodes;
 
+    HashMap<String,Boolean> passedQueries =new HashMap<>();
+
     protected abstract void startListening() throws SocketException ;
-    protected abstract String sendAndReceive(String msg, Node node)  throws IOException ;
-    protected abstract void send(String msg, Node node)  throws IOException ;
-    protected abstract void printClientInfo();
+    protected abstract String sendAndReceive(String msg, Node node) throws Exception;
+    protected abstract void send(String msg, Node node) throws Exception;
 
 
     protected void start(){
@@ -59,10 +63,10 @@ public abstract class Client {
                         }
                     }
                     continue;
-                } else {
+                } else if(s.length()>0) {
                     String searchText = s;
                     for (Node node : knownNodes) {
-                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" + " " + "234";
+                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" + " " + "1";
                         send(search_msg, node);
                     }
                 }
@@ -70,11 +74,11 @@ public abstract class Client {
 
             //Leaving the network
             String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
-            send(unreg_msg, bs);
+            sendUdp(unreg_msg, bs);
             bufferedReader.close();
 
-        } catch (IOException e) {
-            System.err.println("IOException " + e);
+        } catch (Exception e) {
+            System.err.println("Exception " + e);
         } finally {
             if (running == true) {
                 running = false;
@@ -90,6 +94,11 @@ public abstract class Client {
         System.out.println(info + ": " + msg);
     }
 
+    protected void printClientInfo(){
+        echo("BS", bs.ip + ":" + bs.port);
+        echo("My IP", ip + ":" + port_receive);
+        echo("Send Port",ip + ":" + port_send);
+    }
 
     public void setQueries(String[] queries) {
         this.queries = queries;
@@ -101,32 +110,33 @@ public abstract class Client {
     protected void joinToBS() throws IOException {
         // Register with BS
         String reg_msg = "REG " + ip + " " + port_receive + " " + username;
-        String reg_reply = sendAndReceive(reg_msg, bs);
+        String reg_reply = sendAndReceiveUdp(reg_msg, bs);
         knownNodes = parseRegMessage(reg_reply);
         System.out.println("Known Nodes:");
         for (Node node : knownNodes) {
             echo(node.ip + ":" + node.port);
         }
     }
-    protected String processMessage(String msg, DatagramPacket incoming) throws IOException {
-        echo("Incoming Message", incoming.getAddress().getHostAddress() + " : " + incoming.getPort() + " - " + msg);
-
+    protected String processMessage(String msg) throws Exception {
         StringTokenizer st = new StringTokenizer(msg, " ");
         st.nextToken();
         String command = st.nextToken();
 
         if (command.equals("JOIN")) {
-            return processJoin(st, incoming);
+            return processJoin(st);
         }
         else if (command.equals("SER")) {
             return processSearch(st);
         }
         else if (command.equals("LEAVE")) {
-            return processLeave(st, incoming);
+            return processLeave(st);
+        }
+        else if(command.equals("SEROK")){
+            return processSearchResult(msg);
         }
         return null;
     }
-    protected String processLeave(StringTokenizer st, DatagramPacket incoming) throws IOException {
+    protected String processLeave(StringTokenizer st) throws Exception {
         String reply = "LEAVEOK ";
 
         String ip = st.nextToken();
@@ -135,11 +145,10 @@ public abstract class Client {
         knownNodes.removeIf(p -> p.port == port && p.ip == ip);
         return reply;
     }
-    protected String processSearch(StringTokenizer st) throws IOException {
+    protected String processSearch(StringTokenizer st) throws Exception {
 
-        boolean isOkay = true;
-        String reply = "SEROK ";
-        Node sender = null;
+        boolean isOkay;
+        Node sender;
 
         String ip = st.nextToken();
         int port = Integer.parseInt(st.nextToken());
@@ -159,12 +168,19 @@ public abstract class Client {
             }
         }
 
+        //If the particular query is already passed. Leave it.
+        Query q = new Query(new Node(ip,port),query);
+        if(passedQueries.containsKey(q.getHash()))
+            return null;
+        passedQueries.put(q.getHash(),true);
+
         int hops = Integer.parseInt(st.nextToken());
 
         String searchQuery = query.substring(1, query.length());
 
         List<String> results = search(searchQuery);
 
+        String reply = "SEROK "+this.ip+" "+this.port_receive+" ";
         if (results.isEmpty()) {
             reply += "0";
             isOkay = true;
@@ -183,7 +199,7 @@ public abstract class Client {
         }
 
         hops++;
-        if (hops <= 235) {
+        if (hops < 5) {
             for (Node node : knownNodes) {
                 String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
                 //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
@@ -193,7 +209,7 @@ public abstract class Client {
         }
         return null;
     }
-    protected String processJoin(StringTokenizer st, DatagramPacket incoming) throws IOException {
+    protected String processJoin(StringTokenizer st) throws IOException {
         boolean isOkay = true;
         String reply = "JOINOK ";
         Node joinee = null;
@@ -215,6 +231,11 @@ public abstract class Client {
             // incoming.getAddress() returns InetAddress like /127.0.0.1 - therefore convert to a ip string
             return reply;
         }
+        return null;
+    }
+
+    protected String processSearchResult(String msg){
+
         return null;
     }
     protected List<String> search(String msg) {
@@ -243,6 +264,47 @@ public abstract class Client {
         return fileNames;
     }
 
+
+    // Send and receive on the same port
+    protected String sendAndReceiveUdp(String msg, Node node) throws IOException {
+        msg = addLengthToMsg(msg);
+        echo("Send and relieve(to:" + node.ip + ":" + node.port + ")", msg);
+        DatagramSocket sock = new DatagramSocket(port_send);
+        InetAddress node_address = InetAddress.getByName(node.ip);
+        byte[] buffer = msg.getBytes();
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+        sock.send(packet);
+
+        buffer = new byte[65536];
+        String s;
+        DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+        sock.receive(incoming);
+        byte[] data = incoming.getData();
+        s = new String(data, 0, incoming.getLength());
+
+        echo("Receive(to:" + incoming.getAddress() + ":" + incoming.getPort() + ")", s);
+        sock.close();
+        return s;
+    }
+
+    // only send do not wait for a response
+    protected void sendUdp(String msg, Node node) throws IOException {
+
+        synchronized (this) {
+            msg = addLengthToMsg(msg);
+            echo("Send(to: " + ip + ":" + node.port + ")", msg);
+            DatagramSocket sock = new DatagramSocket(port_send);
+            // node address - node to recieve the msg
+            InetAddress node_address = InetAddress.getByName(node.ip);
+            byte[] buffer = msg.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, node_address, node.port);
+            sock.send(packet);
+            sock.close();
+        }
+
+    }
+
+
     // Add length parameter in front of the message
     protected static String addLengthToMsg(String msg) {
         if (msg.length() > 9000)
@@ -255,6 +317,8 @@ public abstract class Client {
         return msg;
     }
     protected static ArrayList<Node> parseRegMessage(String msg) {
+        if(msg == null)
+            return new ArrayList<>();
         String[] parts = msg.split(" ");
         ArrayList<Node> nodes = new ArrayList<>();
         if (parts.length > 3) {
