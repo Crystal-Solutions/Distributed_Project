@@ -128,7 +128,6 @@ public abstract class Client {
     }
     protected String processLeave(StringTokenizer st, DatagramPacket incoming) throws IOException {
         String reply = "LEAVEOK ";
-        Node joinee = null;
 
         String ip = st.nextToken();
         int port = Integer.parseInt(st.nextToken());
