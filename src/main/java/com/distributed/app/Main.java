@@ -83,7 +83,9 @@ public class Main {
                 noOfAllFiles--;
             }
             echo("Files in the com.distributed.app.Node:");
-            files.forEach(Main::echo);
+            for(String f:files){
+                echo(f);
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } finally {

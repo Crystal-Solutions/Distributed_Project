@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.*;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Created by Janaka on 2017-11-08.
@@ -148,10 +149,15 @@ public abstract class Client {
     protected String processLeave(StringTokenizer st) throws Exception {
         String reply = Constants.COMMAND_LEAVE_OK + " ";
 
-        String ip = st.nextToken();
-        int port = Integer.parseInt(st.nextToken());
+        final String ip = st.nextToken();
+        final int port = Integer.parseInt(st.nextToken());
 
-        knownNodes.removeIf(p -> p.port == port && p.ip == ip);
+        knownNodes.removeIf(new Predicate<Node>() {
+            @Override
+            public boolean test(Node p) {
+                return p.port == port && p.ip == ip;
+            }
+        });
         return reply;
     }
 
@@ -257,7 +263,7 @@ public abstract class Client {
 
         String query = st.nextToken();
         if (!queryResults.containsKey(query)) {
-            queryResults.put(query, new ArrayList<>());
+            queryResults.put(query, new ArrayList<String>());
         }
         String result = "";
         while (st.hasMoreTokens()) {

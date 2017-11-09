@@ -7,5 +7,6 @@ com\distributed\app\RestClient.class
 com\distributed\app\Constants.class
 com\distributed\app\Query.class
 com\distributed\app\UdpClient.class
+com\distributed\app\Client$1.class
 com\distributed\app\Client.class
 com\distributed\app\RestClient$2.class
