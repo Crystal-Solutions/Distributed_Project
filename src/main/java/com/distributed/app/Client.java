@@ -279,14 +279,13 @@ public abstract class Client {
 
     protected List<String> search(String msg) {
 
-        String[] queries = {"Adventures of Tintin", "Jack and Jill", "Mission Impossible", "Modern Family", "Adventures of Tintin 2", "Jack and Jill 2"};
         List<String> filesFound = new ArrayList<String>();
         StringTokenizer st = new StringTokenizer(msg, " ");
 
         while (st.hasMoreTokens()) {
             String value = st.nextToken();
             for (String s : files) {
-                if (s.contains(value)) {
+                if (s.toLowerCase().contains(value.toLowerCase())) {
                     filesFound.add(s);
                 }
             }
