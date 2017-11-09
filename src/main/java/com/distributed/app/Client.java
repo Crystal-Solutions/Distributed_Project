@@ -3,17 +3,18 @@ package com.distributed.app;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.*;
+import java.util.UUID;
 
 /**
  * Created by Janaka on 2017-11-08.
  */
 public abstract class Client {
-
 
 
     protected Node bs;    // bootstrap server
@@ -26,14 +27,17 @@ public abstract class Client {
     protected volatile boolean running;
     protected ArrayList<Node> knownNodes;
 
-    HashMap<String,Boolean> passedQueries =new HashMap<>();
+    HashMap<String, Long> passedQueries = new HashMap<>();
+    HashMap<String, List<String>> queryResults = new HashMap<>();
 
-    protected abstract void startListening() throws SocketException ;
+    protected abstract void startListening() throws SocketException;
+
     protected abstract String sendAndReceive(String msg, Node node) throws Exception;
+
     protected abstract void send(String msg, Node node) throws Exception;
 
 
-    protected void start(){
+    protected void start() {
         try {
             running = true;
             printClientInfo();
@@ -43,7 +47,7 @@ public abstract class Client {
             // Join to the distributed network
             echo("Joining to known nodes");
             for (Node node : knownNodes) {
-                String join_msg = "JOIN " + ip + " " + port_receive;
+                String join_msg = Constants.COMMAND_JOIN + " " + ip + " " + port_receive;
                 String join_response = sendAndReceive(join_msg, node);
                 echo("Join response:" + join_response);
             }
@@ -63,17 +67,13 @@ public abstract class Client {
                         }
                     }
                     continue;
-                } else if(s.length()>0) {
-                    String searchText = s;
-                    for (Node node : knownNodes) {
-                        String search_msg = "SER " + ip + " " + port_receive + " " + "\"" + searchText + "\"" + " " + "1";
-                        send(search_msg, node);
-                    }
+                } else if (s.length() > 0) {
+                    trigerSearch(s);
                 }
             }
 
             //Leaving the network
-            String unreg_msg = "UNREG " + ip + " " + port_receive + " " + username;
+            String unreg_msg = Constants.COMMAND_UNREG+" " + ip + " " + port_receive + " " + username;
             sendUdp(unreg_msg, bs);
             bufferedReader.close();
 
@@ -86,30 +86,40 @@ public abstract class Client {
         }
     }
 
+    public void trigerSearch(String searchText) throws Exception {
+        UUID uuid = UUID.randomUUID();
+        for (Node node : knownNodes) {
+            String search_msg = Constants.COMMAND_SEARCH+" " + uuid + " " + ip + " " + port_receive + " " + "\"" + searchText + "\"" + " " + "1";
+            send(search_msg, node);
+        }
+    }
+
     //simple function to echo data to terminal
     public static void echo(String msg) {
         System.out.println(msg);
     }
+
     public static void echo(String info, String msg) {
         System.out.println(info + ": " + msg);
     }
 
-    protected void printClientInfo(){
+    protected void printClientInfo() {
         echo("BS", bs.ip + ":" + bs.port);
         echo("My IP", ip + ":" + port_receive);
-        echo("Send Port",ip + ":" + port_send);
+        echo("Send Port", ip + ":" + port_send);
     }
 
     public void setQueries(String[] queries) {
         this.queries = queries;
     }
+
     public void setFiles(String[] files) {
         this.files = files;
     }
 
     protected void joinToBS() throws IOException {
         // Register with BS
-        String reg_msg = "REG " + ip + " " + port_receive + " " + username;
+        String reg_msg = Constants.COMMAND_REG+" " + ip + " " + port_receive + " " + username;
         String reg_reply = sendAndReceiveUdp(reg_msg, bs);
         knownNodes = parseRegMessage(reg_reply);
         System.out.println("Known Nodes:");
@@ -117,27 +127,26 @@ public abstract class Client {
             echo(node.ip + ":" + node.port);
         }
     }
+
     protected String processMessage(String msg) throws Exception {
         StringTokenizer st = new StringTokenizer(msg, " ");
         st.nextToken();
         String command = st.nextToken();
 
-        if (command.equals("JOIN")) {
+        if (command.equals(Constants.COMMAND_JOIN)) {
             return processJoin(st);
-        }
-        else if (command.equals("SER")) {
+        } else if (command.equals(Constants.COMMAND_SEARCH)) {
             return processSearch(st);
-        }
-        else if (command.equals("LEAVE")) {
+        } else if (command.equals(Constants.COMMAND_LEAVE)) {
             return processLeave(st);
-        }
-        else if(command.equals("SEROK")){
-            return processSearchResult(msg);
+        } else if (command.equals(Constants.COMMAND_SEARCH_OK)) {
+            return processSearchResult(st);
         }
         return null;
     }
+
     protected String processLeave(StringTokenizer st) throws Exception {
-        String reply = "LEAVEOK ";
+        String reply = Constants.COMMAND_LEAVE_OK + " ";
 
         String ip = st.nextToken();
         int port = Integer.parseInt(st.nextToken());
@@ -145,11 +154,13 @@ public abstract class Client {
         knownNodes.removeIf(p -> p.port == port && p.ip == ip);
         return reply;
     }
+
     protected String processSearch(StringTokenizer st) throws Exception {
 
         boolean isOkay;
         Node sender;
 
+        String uuid = st.nextToken();
         String ip = st.nextToken();
         int port = Integer.parseInt(st.nextToken());
 
@@ -168,19 +179,26 @@ public abstract class Client {
             }
         }
 
-        //If the particular query is already passed. Leave it.
-        Query q = new Query(new Node(ip,port),query);
-        if(passedQueries.containsKey(q.getHash()))
-            return null;
-        passedQueries.put(q.getHash(),true);
 
         int hops = Integer.parseInt(st.nextToken());
-
         String searchQuery = query.substring(1, query.length());
+
+
+        //If the particular query is already passed. Leave it.
+        Query q = new Query(new Node(ip, port), searchQuery, uuid);
+        Long millis = System.currentTimeMillis();
+        for (Map.Entry m : passedQueries.entrySet()) {
+            if ((Long) m.getValue() < millis - 10000) {
+                passedQueries.remove(m.getKey());
+            }
+        }
+        if (passedQueries.containsKey(q.getHash()))
+            return null;
+        passedQueries.put(q.getHash(), millis);
 
         List<String> results = search(searchQuery);
 
-        String reply = "SEROK "+this.ip+" "+this.port_receive+" ";
+        String reply = Constants.COMMAND_SEARCH_OK + " " + q.getHash() + " " + this.ip + " " + this.port_receive + " ";
         if (results.isEmpty()) {
             reply += "0";
             isOkay = true;
@@ -201,7 +219,7 @@ public abstract class Client {
         hops++;
         if (hops < 5) {
             for (Node node : knownNodes) {
-                String search_msg = "SER " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
+                String search_msg = "SER " + uuid + " " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
                 //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
                 send(search_msg, node);
 
@@ -209,9 +227,10 @@ public abstract class Client {
         }
         return null;
     }
+
     protected String processJoin(StringTokenizer st) throws IOException {
         boolean isOkay = true;
-        String reply = "JOINOK ";
+        String reply = Constants.COMMAND_JOIN_OK + " ";
         Node joinee = null;
 
         String ip = st.nextToken();
@@ -234,10 +253,20 @@ public abstract class Client {
         return null;
     }
 
-    protected String processSearchResult(String msg){
+    protected String processSearchResult(StringTokenizer st) {
 
+        String query = st.nextToken();
+        if (!queryResults.containsKey(query)) {
+            queryResults.put(query, new ArrayList<>());
+        }
+        String result = "";
+        while (st.hasMoreTokens()) {
+            result += " " + st.nextToken();
+        }
+        queryResults.get(query).add(result);
         return null;
     }
+
     protected List<String> search(String msg) {
 
         String[] queries = {"Adventures of Tintin", "Jack and Jill", "Mission Impossible", "Modern Family", "Adventures of Tintin 2", "Jack and Jill 2"};
@@ -316,8 +345,9 @@ public abstract class Client {
         }
         return msg;
     }
+
     protected static ArrayList<Node> parseRegMessage(String msg) {
-        if(msg == null)
+        if (msg == null)
             return new ArrayList<>();
         String[] parts = msg.split(" ");
         ArrayList<Node> nodes = new ArrayList<>();

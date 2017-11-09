@@ -9,3 +9,8 @@ start cmd /k "java -cp target\client-project-1.0-SNAPSHOT-jar-with-dependencies.
 start cmd /k "java -cp target\client-project-1.0-SNAPSHOT-jar-with-dependencies.jar com.distributed.app.Main localhost 55555 localhost 10009 9009 crystal REST"
 start cmd /k "java -cp target\client-project-1.0-SNAPSHOT-jar-with-dependencies.jar com.distributed.app.Main localhost 55555 localhost 10010 9010 crystal REST"
 
+cd BS
+start cmd /k "start.bat"
+
+cd ..\front_end
+start cmd /k "start.bat"

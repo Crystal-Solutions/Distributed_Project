@@ -6,13 +6,27 @@ package com.distributed.app;
 public class Query {
     String msg;
     Node sender;
+    String uuid;
 
-    public Query(Node sender, String msg) {
+    public Query(Node sender, String msg, String uuid) {
         this.sender = sender;
         this.msg = msg;
+        this.uuid = uuid;
     }
     public String getHash(){
-        return sender.ip+":"+sender.port+":"+msg;
+        String response = sender.ip+"_"+sender.port+":";
+        for(String s:msg.split("\\s+")){
+            response+= s+"_";
+        }
+        return response.substring(0, response.length() - 1)+":"+uuid;
+    }
+
+    public String getShortHash(){
+        String response = sender.ip+"_"+sender.port+": ";
+        for(String s:msg.split("\\s+")){
+            response+= s+"_";
+        }
+        return response.substring(0, response.length() - 1)+":"+ uuid.substring(4);
     }
 }
 

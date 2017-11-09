@@ -4,8 +4,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.StringJoiner;
 
 import static spark.Spark.get;
+import static spark.Spark.post;
 import static spark.Spark.port;
 
 import spark.Request;
@@ -48,6 +52,50 @@ public class RestClient extends Client {
                     e.printStackTrace();
                 }
                 return "Message:"+request.params(":msg");
+            }
+        });
+
+        get("/info", new Route() {
+            @Override
+            public Object handle(Request request, Response response) {
+                String reply = "";
+
+                reply+="Files:\n";
+                for(String s:files){
+                    reply+=s+"\n";
+                }
+
+                reply+= "\nPassed Messages:\n";
+                for(Map.Entry m:passedQueries.entrySet()){
+                    reply+= m.getKey() +"\n";
+                }
+
+
+                reply += "\nSearch Results:\n";
+                for(Map.Entry m:queryResults.entrySet()){
+
+                    reply+= m.getKey() +":\n";
+                    for(String s:(ArrayList<String>) m.getValue()){
+                        reply+= ">>>"+s+"\n";
+                    }
+                }
+
+                response.header("Access-Control-Allow-Origin", "*");
+                return reply;
+            }
+        });
+
+        post("/search/:q", new Route() {
+            @Override
+            public Object handle(Request request, Response response) {
+                try {
+                    String q = request.params(":q");
+                    q = URLDecoder.decode(q, "UTF-8");
+                    trigerSearch(q);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return "Message:"+request.params(":q");
             }
         });
     }

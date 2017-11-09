@@ -37,15 +37,14 @@ public class Main {
         client.setQueries(queries);
 
 
-        JFrame frame =new JFrame("DisplayDialog");
-        frame.setTitle(clientType+" Client");
-        DisplayDialog dialog = new DisplayDialog();
-        dialog.clientType.setText(clientType);
-        dialog.logText.setText("jldkafj\nldlldd");
-        frame.setContentPane(dialog.getContentPane());
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.pack();
-        frame.setVisible(true);
+//        JFrame frame =new JFrame("DisplayDialog");
+////        frame.setTitle(clientType+" Client");
+////        DisplayDialog dialog = new DisplayDialog();
+////        dialog.clientType.setText(clientType);
+////        frame.setContentPane(new DisplayDialog().getContentPane());
+////        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+////        frame.pack();
+////        frame.setVisible(true);
 
         client.start();
 
