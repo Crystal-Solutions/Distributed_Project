@@ -48,7 +48,9 @@ public class RestClient extends Client {
                     String msg = request.params(":msg");
                     msg = URLDecoder.decode(msg, "UTF-8");
                     echo("Receive",msg);
-                    reply = processMessage(msg);
+                    String r = processMessage(msg);
+                    if(r!=null)
+                        reply = r;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
