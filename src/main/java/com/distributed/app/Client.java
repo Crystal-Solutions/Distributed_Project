@@ -193,9 +193,12 @@ public abstract class Client {
         //If the particular query is already passed. Leave it.
         Query q = new Query(new Node(ip, port), searchQuery, uuid);
         Long millis = System.currentTimeMillis();
-        for (Map.Entry m : passedQueries.entrySet()) {
-            if ((Long) m.getValue() < millis - 10000) {
-                passedQueries.remove(m.getKey());
+
+
+        for(Iterator<Map.Entry<String, Long>> it = passedQueries.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<String, Long> entry = it.next();
+            if(entry.getValue() < millis - 10000) {
+                it.remove();
             }
         }
         if (passedQueries.containsKey(q.getHash()))
@@ -223,7 +226,7 @@ public abstract class Client {
         }
 
         hops++;
-        if (hops < 5) {
+        if (hops < 15) {
             for (Node node : knownNodes) {
                 String search_msg = "SER " + uuid + " " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
                 //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
@@ -269,6 +272,7 @@ public abstract class Client {
         while (st.hasMoreTokens()) {
             result += " " + st.nextToken();
         }
+        echo("Search Result",query+":"+result);
         queryResults.get(query).add(result);
         return null;
     }
