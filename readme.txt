@@ -8,7 +8,7 @@ use RPCs or web services to develop distributed systems
 measure an analyze the performance of a distributed system
 
 
-# Run
+# Run Phase 2
 The project is configured to run in windows environment.  
 Start the Bootstrap Server seperately.  
 Change the `start.bat` file according to the bootstrap server ip and port. 
@@ -24,6 +24,13 @@ Which will start n number of terminals. (n is the number of nodes)
 You can enter the query from any terminal and it will print responses from each node
 To start start nodes on different servers you can just move the project there and modify the start.bat file accordingly.
 
+
+# Run Phase 3
+Start with 10 nodes in the localhost; Just double click the start_10.bat. It will start 10 terminals.
+In these terminals you can enter serch queries.
+Further there is a web UI configured to work with all nodes. To see that, in your browser navigate to http://localhost:9080.
+There will be a web UI. In that therw will be a text box callse "Number of Nodes". Enter 10 and press 'Generate' button.
+It will automatically connect to local nodes and display there states. Further you can enter serch queries from the we UI.
 
 #Team
 130594B - B.J.C.Thilakarathna 

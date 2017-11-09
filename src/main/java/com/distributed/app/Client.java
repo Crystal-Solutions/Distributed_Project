@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.*;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Created by Janaka on 2017-11-08.
@@ -148,10 +149,15 @@ public abstract class Client {
     protected String processLeave(StringTokenizer st) throws Exception {
         String reply = Constants.COMMAND_LEAVE_OK + " ";
 
-        String ip = st.nextToken();
-        int port = Integer.parseInt(st.nextToken());
+        final String ip = st.nextToken();
+        final int port = Integer.parseInt(st.nextToken());
 
-        knownNodes.removeIf(p -> p.port == port && p.ip == ip);
+        knownNodes.removeIf(new Predicate<Node>() {
+            @Override
+            public boolean test(Node p) {
+                return p.port == port && p.ip == ip;
+            }
+        });
         return reply;
     }
 
@@ -187,9 +193,12 @@ public abstract class Client {
         //If the particular query is already passed. Leave it.
         Query q = new Query(new Node(ip, port), searchQuery, uuid);
         Long millis = System.currentTimeMillis();
-        for (Map.Entry m : passedQueries.entrySet()) {
-            if ((Long) m.getValue() < millis - 10000) {
-                passedQueries.remove(m.getKey());
+
+
+        for(Iterator<Map.Entry<String, Long>> it = passedQueries.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<String, Long> entry = it.next();
+            if(entry.getValue() < millis - 10000) {
+                it.remove();
             }
         }
         if (passedQueries.containsKey(q.getHash()))
@@ -217,7 +226,7 @@ public abstract class Client {
         }
 
         hops++;
-        if (hops < 5) {
+        if (hops < 15) {
             for (Node node : knownNodes) {
                 String search_msg = "SER " + uuid + " " + ip + " " + port + " " + "\"" + searchQuery + "\"" + " " + hops;
                 //String search_msg = "SER " + ip + " " + port_receive + " " + "\"of Tintin\"";
@@ -257,12 +266,13 @@ public abstract class Client {
 
         String query = st.nextToken();
         if (!queryResults.containsKey(query)) {
-            queryResults.put(query, new ArrayList<>());
+            queryResults.put(query, new ArrayList<String>());
         }
         String result = "";
         while (st.hasMoreTokens()) {
             result += " " + st.nextToken();
         }
+        echo("Search Result",query+":"+result);
         queryResults.get(query).add(result);
         return null;
     }
