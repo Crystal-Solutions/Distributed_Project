@@ -95,6 +95,7 @@ public class RestClient extends Client {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+                response.header("Access-Control-Allow-Origin", "*");
                 return "Message:"+request.params(":q");
             }
         });

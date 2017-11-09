@@ -4,3 +4,7 @@ textarea{
     font-size:10px!important;
     /* white-space: nowrap;     */
 }
+
+.long_text{
+    min-width:800px;
+}
