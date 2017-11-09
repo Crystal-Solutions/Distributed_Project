@@ -68,6 +68,13 @@ public class RestClient extends Client {
                     reply+=s+"\n";
                 }
 
+
+                reply+="\nConnected Nodes:\n";
+                for(Node node:knownNodes){
+                    reply+=node.getIp()+":"+node.port+"\n";
+                }
+
+
                 reply+= "\nPassed Messages:\n";
                 for(Map.Entry m:passedQueries.entrySet()){
                     reply+= m.getKey() +"\n";
