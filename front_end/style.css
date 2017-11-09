@@ -1,0 +1,10 @@
+textarea{
+    min-height: 400px;
+    min-width:400px;
+    font-size:10px!important;
+    /* white-space: nowrap;     */
+}
+
+.long_text{
+    min-width:800px;
+}
