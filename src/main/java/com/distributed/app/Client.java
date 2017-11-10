@@ -30,6 +30,7 @@ public abstract class Client {
 
     HashMap<String, Long> passedQueries = new HashMap<>();
     HashMap<String, List<String>> queryResults = new HashMap<>();
+    HashMap<String, Long> receivedHeartBeats = new HashMap<>();
 
     protected abstract void startListening() throws SocketException;
 
@@ -44,6 +45,7 @@ public abstract class Client {
             printClientInfo();
             startListening();
             joinToBS();
+            startHeartBeat();
 
             // Join to the distributed network
             echo("Joining to known nodes");
@@ -58,9 +60,18 @@ public abstract class Client {
                 bufferedReader = new BufferedReader(new InputStreamReader(System.in));
                 String s = bufferedReader.readLine();
                 // TODO: pani/ravi - take queries from user input and search(can use a seperate method
-                if (s.equals("leave")) {
+                if (s.equals(">leave")) {
                     running = !running;
-                } else if (s.equals("nodes")) {
+                }
+                else if(s.equals(">results")){
+                    if(queryResults != null){
+                        for (Object value : queryResults.values()) {
+                            echo("results"+value.toString());
+                        }
+                    }
+                    continue;
+                }
+                else if (s.equals(">nodes")) {
                     // for debugging purposes
                     if (knownNodes != null) {
                         for (Node node : knownNodes) {
@@ -143,6 +154,9 @@ public abstract class Client {
         } else if (command.equals(Constants.COMMAND_SEARCH_OK)) {
             return processSearchResult(st);
         }
+        if (command.equals(Constants.COMMAND_ALIVE)) {
+            return processHeartBeat(st);
+        }
         return null;
     }
 
@@ -197,7 +211,7 @@ public abstract class Client {
 
         for(Iterator<Map.Entry<String, Long>> it = passedQueries.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, Long> entry = it.next();
-            if(entry.getValue() < millis - 10000) {
+            if(entry.getValue() < millis - 50000) {
                 it.remove();
             }
         }
@@ -279,14 +293,13 @@ public abstract class Client {
 
     protected List<String> search(String msg) {
 
-        String[] queries = {"Adventures of Tintin", "Jack and Jill", "Mission Impossible", "Modern Family", "Adventures of Tintin 2", "Jack and Jill 2"};
         List<String> filesFound = new ArrayList<String>();
         StringTokenizer st = new StringTokenizer(msg, " ");
 
         while (st.hasMoreTokens()) {
             String value = st.nextToken();
             for (String s : files) {
-                if (s.contains(value)) {
+                if (s.toLowerCase().contains(value.toLowerCase())) {
                     filesFound.add(s);
                 }
             }
@@ -370,5 +383,58 @@ public abstract class Client {
         }
         return nodes;
     }
+    protected void startHeartBeat() {
+        echo("starting heart beat");
+        Thread t1 = new Thread()
+        {
+            public void run()
+            {
+                try {
+                    Thread.sleep(20000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                while(running) {
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+                    }
+                    synchronized(this) {
+                        Iterator<Node> iter = knownNodes.iterator();
+                        while (iter.hasNext()) {
+                            boolean nodeRemoved = false;
+                            Node node = iter.next();
+                            Long timeStamp = System.currentTimeMillis();
+                            if (receivedHeartBeats.get(node.getHttpUrl()) != null) {
+                                if (timeStamp - receivedHeartBeats.get(node.getHttpUrl()) > 15000) {
+                                    echo(node.getIp() + " " + node.getPort() + " Removed-------------");
+                                    iter.remove();
+                                    nodeRemoved = true;
+                                }
+                            }
+                        }
+                        for (Node node : knownNodes) {
+                            String heartBeat_msg = Constants.COMMAND_ALIVE + " " + ip + " " + port_receive;
+                            try {
+                                send(heartBeat_msg, node);
+                            } catch (Exception e) {
+                                //                           e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        t1.start();
+    }
 
+    protected String processHeartBeat(StringTokenizer st){
+
+        String receivedIp = st.nextToken();
+        int receivedPort = Integer.parseInt(st.nextToken());
+        Node n = new Node(receivedIp, receivedPort);
+        receivedHeartBeats.put(n.getHttpUrl(),System.currentTimeMillis());
+        return "";
+    }
 }

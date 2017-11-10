@@ -48,7 +48,9 @@ public class RestClient extends Client {
                     String msg = request.params(":msg");
                     msg = URLDecoder.decode(msg, "UTF-8");
                     echo("Receive",msg);
-                    reply = processMessage(msg);
+                    String r = processMessage(msg);
+                    if(r!=null)
+                        reply = r;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -65,6 +67,13 @@ public class RestClient extends Client {
                 for(String s:files){
                     reply+=s+"\n";
                 }
+
+
+                reply+="\nConnected Nodes:\n";
+                for(Node node:knownNodes){
+                    reply+=node.getIp()+":"+node.port+"\n";
+                }
+
 
                 reply+= "\nPassed Messages:\n";
                 for(Map.Entry m:passedQueries.entrySet()){
