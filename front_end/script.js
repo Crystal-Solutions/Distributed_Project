@@ -18,7 +18,7 @@ var addNode = function(i,host,port){
         $.get(infoUrl+"/info", function( data ) {
             $('#results'+i).html(data);
         })
-    },1000)
+    },2000)
 }
 
 $("#generateButton").click(function () {
