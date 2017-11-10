@@ -1,12 +1,10 @@
 package com.distributed.app;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
@@ -101,7 +99,7 @@ public class RestClient extends Client {
                 try {
                     String q = request.params(":q");
                     q = URLDecoder.decode(q, "UTF-8");
-                    trigerSearch(q);
+                    triggerSearch(q);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
