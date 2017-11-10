@@ -79,8 +79,12 @@ public abstract class Client {
                 }
                 else if(s.equals(">results")){
                     if(queryResults != null){
-                        for (Object value : queryResults.values()) {
-                            echo("results"+value.toString());
+                        for(Map.Entry m:queryResults.entrySet()){
+                            echo((String) m.getKey());
+                            for(String result:(ArrayList<String>) m.getValue()){
+                                echo(">>>"+result);
+                            }
+                            echo("");
                         }
                     }
                     continue;
@@ -206,7 +210,7 @@ public abstract class Client {
         byte[] data = incoming.getData();
         s = new String(data, 0, incoming.getLength());
 
-        echo("Receive(to:" + incoming.getAddress() + ":" + incoming.getPort() + ")", s);
+//        echo("Receive(to:" + incoming.getAddress() + ":" + incoming.getPort() + ")", s);
         sock.close();
         return s;
     }
@@ -216,7 +220,7 @@ public abstract class Client {
 
         synchronized (this) {
             msg = addLengthToMsg(msg);
-            echo("Send(to: " + ip + ":" + node.port + ")", msg);
+//            echo("Send(to: " + ip + ":" + node.port + ")", msg);
             DatagramSocket sock = new DatagramSocket(port_send);
             // node address - node to recieve the msg
             InetAddress node_address = InetAddress.getByName(node.ip);
@@ -280,8 +284,8 @@ public abstract class Client {
                             Node node = iter.next();
                             Long timeStamp = System.currentTimeMillis();
                             if (receivedHeartBeats.get(node.getHttpUrl()) != null) {
-                                if (timeStamp - receivedHeartBeats.get(node.getHttpUrl()) > 20000) {
-                                    echo(node.getIp() + " " + node.getPort() + " Removed-------------");
+                                if (timeStamp - receivedHeartBeats.get(node.getHttpUrl()) > 15000) {
+                                    echo("Removing Node",node.getIp() + " " + node.getPort());
                                     iter.remove();
                                     nodeRemoved = true;
                                 }
@@ -458,8 +462,9 @@ public abstract class Client {
     protected String processContactsReply(String st){
         ArrayList<Node> newNodes = parseContactsMessage(st);
         echo("New Nodes:");
+        String msg = "";
         for (Node node : newNodes) {
-            echo(node.ip + ":" + node.port);
+            msg+=node.ip + ":" + node.port+" | ";
             Boolean alreadyKnown = false;
             for (Node knownNode: knownNodes) {
                 if (node.getHttpUrl().equals(knownNode.getHttpUrl())) {
@@ -472,8 +477,13 @@ public abstract class Client {
             }
         }
 
-        echo("Known Nodes:");
+        echo(msg);
+        echo("Known Nodes(Updated):");
+        int i=0;
         for (Node node : knownNodes) {
+            i++;
+            if(i>=4)
+                break;
             echo(node.ip + ":" + node.port);
         }
         return null;
