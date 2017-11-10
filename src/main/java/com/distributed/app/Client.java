@@ -144,20 +144,22 @@ public abstract class Client {
         st.nextToken();
         String command = st.nextToken();
 
-        if (command.equals(Constants.COMMAND_JOIN)) {
-            return processJoin(st);
-        } else if (command.equals(Constants.COMMAND_SEARCH)) {
-            return processSearch(st);
-        } else if (command.equals(Constants.COMMAND_LEAVE)) {
-            return processLeave(st);
-        } else if (command.equals(Constants.COMMAND_SEARCH_OK)) {
-            return processSearchResult(st);
-        } else if (command.equals(Constants.COMMAND_ALIVE)) {
-            return processHeartBeat(st);
-        } else if (command.equals(Constants.COMMAND_REQUEST_CONTACTS)) {
-            return processContactsRequest(st);
-        } else if (command.equals(Constants.COMMAND_REQUEST_CONTACTS_OK)) {
-            return processContactsReply(msg);
+        synchronized (knownNodes){
+            if (command.equals(Constants.COMMAND_JOIN)) {
+                return processJoin(st);
+            } else if (command.equals(Constants.COMMAND_SEARCH)) {
+                return processSearch(st);
+            } else if (command.equals(Constants.COMMAND_LEAVE)) {
+                return processLeave(st);
+            } else if (command.equals(Constants.COMMAND_SEARCH_OK)) {
+                return processSearchResult(st);
+            } else if (command.equals(Constants.COMMAND_ALIVE)) {
+                return processHeartBeat(st);
+            } else if (command.equals(Constants.COMMAND_REQUEST_CONTACTS)) {
+                return processContactsRequest(st);
+            } else if (command.equals(Constants.COMMAND_REQUEST_CONTACTS_OK)) {
+                return processContactsReply(msg);
+            }
         }
         return null;
     }
@@ -271,7 +273,7 @@ public abstract class Client {
                     } catch (InterruptedException e) {
 //                        e.printStackTrace();
                     }
-                    synchronized(this) {
+                    synchronized(knownNodes) {
                         Iterator<Node> iter = knownNodes.iterator();
                         while (iter.hasNext()) {
                             boolean nodeRemoved = false;
@@ -457,8 +459,17 @@ public abstract class Client {
         ArrayList<Node> newNodes = parseContactsMessage(st);
         echo("New Nodes:");
         for (Node node : newNodes) {
-            knownNodes.add(node);
             echo(node.ip + ":" + node.port);
+            Boolean alreadyKnown = false;
+            for (Node knownNode: knownNodes) {
+                if (node.getHttpUrl().equals(knownNode.getHttpUrl())) {
+                    alreadyKnown = true;
+                    break;
+                }
+            }
+            if (!alreadyKnown) {
+                knownNodes.add(node);
+            }
         }
 
         echo("Known Nodes:");
