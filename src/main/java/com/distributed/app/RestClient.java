@@ -1,12 +1,10 @@
 package com.distributed.app;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
@@ -47,7 +45,7 @@ public class RestClient extends Client {
                 try {
                     String msg = request.params(":msg");
                     msg = URLDecoder.decode(msg, "UTF-8");
-                    echo("Receive",msg);
+//                    echo("Receive",msg);
                     String r = processMessage(msg);
                     if(r!=null)
                         reply = r;
@@ -101,7 +99,7 @@ public class RestClient extends Client {
                 try {
                     String q = request.params(":q");
                     q = URLDecoder.decode(q, "UTF-8");
-                    trigerSearch(q);
+                    triggerSearch(q);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -114,15 +112,24 @@ public class RestClient extends Client {
 
     @Override
     protected String sendAndReceive(String msg, Node node) throws Exception {
-        echo("Send",msg);
+//        echo("Send",msg);
         msg = addLengthToMsg(msg);
         msg = URLEncoder.encode(msg, "UTF-8");
         return sendGet(node.getHttpUrl()+"/api/"+msg);
     }
 
     @Override
-    protected void send(String msg, Node node) throws Exception {
-        sendAndReceive(msg,node);
+    protected void send(final String msg, final Node node) throws Exception {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    sendAndReceive(msg,node);
+                } catch (Exception e) {
+//                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
 

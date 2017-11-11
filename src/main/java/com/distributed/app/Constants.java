@@ -13,4 +13,6 @@ public class Constants {
     public static String COMMAND_REG = "REG";
     public static String COMMAND_UNREG = "UNREG";
     public static String COMMAND_ALIVE = "IMALIVE";
+    public static String COMMAND_REQUEST_CONTACTS = "NEEDCONTACTS";
+    public static String COMMAND_REQUEST_CONTACTS_OK = "NEEDCONTACTSOK";
 }

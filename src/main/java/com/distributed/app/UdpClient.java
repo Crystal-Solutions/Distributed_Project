@@ -42,8 +42,9 @@ public class UdpClient extends Client {
                         String s = new String(data, 0, incoming.getLength());
                         String reply = processMessage(s);
                         if (reply != null)
-                            send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
-
+                            synchronized (knownNodes) {
+                                send(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+                            }
                     } catch (SocketTimeoutException e) {
                     } catch (Exception e) {
                         e.printStackTrace();
