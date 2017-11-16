@@ -97,15 +97,38 @@ public abstract class Client {
                             long min = 100000000;
                             long max = 0;
                             double avg = 0;
+                            ArrayList<Double> results = new ArrayList<>();
                             for(Long result:(ArrayList<Long>) m.getValue()){
+                                results.add((double)result);
                                 avg += result;
                                 if(result<min)min = result;
                                 if(result>max)max = result;
                             }
+                            avg=avg/(double)(((ArrayList<Long>) m.getValue()).size());
+                            double sd = calculateSD(results, avg);
                             echo("MIN: "+min);
                             echo("MAX: "+max);
-                            echo("AVG: "+avg/(double)(((ArrayList<Long>) m.getValue()).size()));
+                            echo("AVG: "+avg);
+                            echo("SD: "+sd);
                             echo("");
+
+                            min = 100000000;
+                            max = 0;
+                            avg = 0;
+                            results.clear();
+                            for(String result: queryResults.get(m.getKey())){
+                                int hops = Integer.parseInt(result.split(" ")[3]);
+                                results.add((double)hops);
+                                avg += hops;
+                                if(hops<min)min = hops;
+                                if(hops>max)max = hops;
+                            }
+                            avg = avg/(double)queryResults.get(m.getKey()).size();
+                            sd = calculateSD(results, avg);
+                            echo("MIN HOPS: "+min);
+                            echo("MAX HOPS: "+max);
+                            echo("AVG HOPS: "+avg);
+                            echo("SD HOPS: "+sd);
                         }
                     }
                     continue;
@@ -407,7 +430,7 @@ public abstract class Client {
 
         List<String> results = search(searchQuery);
 
-        String reply = Constants.COMMAND_SEARCH_OK + " " + q.getHash() + " " + this.ip + " " + this.port_receive + " ";
+        String reply = Constants.COMMAND_SEARCH_OK + " " + q.getHash() + " " + this.ip + " " + this.port_receive + " "+hops+" ";
         if (results.isEmpty()) {
             reply += "0";
             isOkay = true;
@@ -442,6 +465,7 @@ public abstract class Client {
         if (!queryResults.containsKey(query)) {
             queryResults.put(query, new ArrayList<String>());
         }
+
         String result = "";
         while (st.hasMoreTokens()) {
             result += " " + st.nextToken();
@@ -538,5 +562,27 @@ public abstract class Client {
             }
         });
         return reply;
+    }
+
+    protected double calculateSD(ArrayList<Double> doubleArrayList, double mean){
+        // Step 1:
+        double temp = 0;
+
+        for (int i = 0; i < doubleArrayList.size(); i++)
+        {
+            double val = doubleArrayList.get(i);
+
+            // Step 2:
+            double squrDiffToMean = Math.pow(val - mean, 2);
+
+            // Step 3:
+            temp += squrDiffToMean;
+        }
+
+        // Step 4:
+        double meanOfDiffs = (double) temp / (double) (doubleArrayList.size());
+
+        // Step 5:
+        return Math.sqrt(meanOfDiffs);
     }
 }
