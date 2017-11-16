@@ -26,9 +26,11 @@ public abstract class Client {
     protected String username;
     protected volatile boolean running;
     protected ArrayList<Node> knownNodes;
+    protected long lastSearchedTime;
 
     HashMap<String, Long> passedQueries = new HashMap<>();
     HashMap<String, List<String>> queryResults = new HashMap<>();
+    HashMap<String, ArrayList<Long>> searchResponseLatencies = new HashMap<>();
     HashMap<String, Long> receivedHeartBeats = new HashMap<>();
 
     protected abstract void startListening() throws SocketException;
@@ -88,6 +90,25 @@ public abstract class Client {
                         }
                     }
                     continue;
+                } else if(s.equals(">latency")){
+                    if(searchResponseLatencies != null){
+                        for(Map.Entry m:searchResponseLatencies.entrySet()){
+                            echo((String) m.getKey());
+                            long min = 100000000;
+                            long max = 0;
+                            double avg = 0;
+                            for(Long result:(ArrayList<Long>) m.getValue()){
+                                avg += result;
+                                if(result<min)min = result;
+                                if(result>max)max = result;
+                            }
+                            echo("MIN: "+min);
+                            echo("MAX: "+max);
+                            echo("AVG: "+avg/(double)(((ArrayList<Long>) m.getValue()).size()));
+                            echo("");
+                        }
+                    }
+                    continue;
                 }
                 else if (s.equals(">nodes")) {
                     // for debugging purposes
@@ -118,6 +139,7 @@ public abstract class Client {
 
     public void triggerSearch(String searchText) throws Exception {
         UUID uuid = UUID.randomUUID();
+        lastSearchedTime = System.currentTimeMillis();
         for (Node node : knownNodes) {
             String search_msg = Constants.COMMAND_SEARCH+" " + uuid + " " + ip + " " + port_receive + " " + "\"" + searchText + "\"" + " " + "1";
             send(search_msg, node);
@@ -426,6 +448,20 @@ public abstract class Client {
         }
         echo("Search Result",query+":"+result);
         queryResults.get(query).add(result);
+
+        // for each search result, latency is added to the hashmap
+        long receivedTime = System.currentTimeMillis();
+        long latency = receivedTime - lastSearchedTime;
+        ArrayList<Long> latencyList = searchResponseLatencies.get(query);
+        // if list does not exist create it
+        if(latencyList == null) {
+            latencyList = new ArrayList<Long>();
+            latencyList.add(latency);
+            searchResponseLatencies.put(query, latencyList);
+        } else {
+            // add if item is not already in list
+            latencyList.add(latency);
+        }
         return null;
     }
 
