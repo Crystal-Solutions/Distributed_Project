@@ -1,8 +1,6 @@
 package com.distributed.app;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -92,6 +90,8 @@ public abstract class Client {
                     continue;
                 } else if(s.equals(">latency")){
                     if(searchResponseLatencies != null){
+                        PrintWriter pw = new PrintWriter(new File("test "+port_receive+".csv"));
+                        StringBuilder sb = new StringBuilder();
                         for(Map.Entry m:searchResponseLatencies.entrySet()){
                             echo((String) m.getKey());
                             long min = 100000000;
@@ -111,6 +111,8 @@ public abstract class Client {
                             echo("AVG: "+avg);
                             echo("SD: "+sd);
                             echo("");
+                            sb.append(m.getKey()+"\n");
+                            sb.append("Time Min: ,"+min+"\n"+"Time Max: ,"+max+"\n"+"Time Avg: ,"+avg+"\n"+"Time SD: ,"+sd+"\n");
 
                             min = 100000000;
                             max = 0;
@@ -129,7 +131,10 @@ public abstract class Client {
                             echo("MAX HOPS: "+max);
                             echo("AVG HOPS: "+avg);
                             echo("SD HOPS: "+sd);
+                            sb.append("Hops Min: ,"+min+"\n"+"Hops Max: ,"+max+"\n"+"Hops Avg: ,"+avg+"\n"+"Hops SD: ,"+sd+"\n");
                         }
+                        pw.write(sb.toString());
+                        pw.close();
                     }
                     continue;
                 }
